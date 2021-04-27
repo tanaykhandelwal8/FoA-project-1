@@ -150,7 +150,6 @@ int read_hex_line(byte_t output[], int max_count, char *last_char)
         /* Convert this hex into an int and store it */
         output[count] = hex_to_int(hex); // (defined in aes.h)
     }
-
     return count - 1;
 }
 
@@ -164,11 +163,29 @@ void stage0(msg_t ciphertext, int *ciphertext_length, block_t outputs[N_OUTPUT_B
     /* !! Submission Instructions !! Store your results in the variables:
      *      ciphertext, ciphertext_length, outputs, timesteps, cipherbook
      * These are passed to submit_stage0 for some useful output and submission. */
-    scanf("%d", &(*ciphertext_length)); 
-    read_hex_line(outputs[0], 1024, NULL); 
-    printf("%c", outputs[0][0]); 
+    scanf("%d\n", ciphertext_length);  // gets the length of the encrypted ciphertext
+    int i = 0; 
+    for(i = 0; i < *ciphertext_length; i += BLOCKSIZE) {
+         read_hex_line(&ciphertext[i], BLOCKSIZE, NULL); 
+         scanf("\n");
+    }// read line 2
+    
+    for(i = 0; i < N_OUTPUT_BLOCKS; i++) {
+         read_hex_line(outputs[i], BLOCKSIZE, NULL); 
+         scanf("\n");
+    }// read line 3
+    
+    for(i = 0; i < N_TIMESTEPS; i++) {
+         read_hex_line(timesteps[i], BLOCKSIZE, NULL); 
+         scanf("\n");
+    }// read line 4
 
-}
+    for(i = 0; i < BOOK_LENGTH; i++) {
+        cipherbook[i] = getchar();
+    }// read line 5
+    // TODO: MAKE THIS A FUNCTION 
+} 
+
 
 // TODO: Add functions here, if needed.
 
@@ -232,3 +249,4 @@ void stage4(byte_t key1[], byte_t ciphertext[], int cipher_length, byte_t plaint
 /********* END OF ASSIGNMENT! *********/
 /* If you would like to try the bonus stage, attempt it in a new file, bonus.c */
 // Feel free to write a comment to the marker or the lecturer below...
+
