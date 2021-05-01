@@ -153,23 +153,18 @@ int read_hex_line(byte_t output[], int max_count, char *last_char)
     return count - 1;
 }
 
-/********* Stage 0 Functions *********/
+/*********Stage 0*********/
 
 void stage0(msg_t ciphertext, int *ciphertext_length, block_t outputs[N_OUTPUT_BLOCKS], 
             block_t timesteps[N_TIMESTEPS], book_t cipherbook) 
 {
-    // TODO: Implement stage 0!
-    
-    /* !! Submission Instructions !! Store your results in the variables:
-     *      ciphertext, ciphertext_length, outputs, timesteps, cipherbook
-     * These are passed to submit_stage0 for some useful output and submission. */
-    scanf("%d\n", ciphertext_length);  // gets the length of the encrypted ciphertext
+    scanf("%d\n", ciphertext_length);  // reads line 1
     int i = 0; 
     for(i = 0; i < *ciphertext_length; i += BLOCKSIZE) {
          read_hex_line(&ciphertext[i], BLOCKSIZE, NULL); 
          scanf("\n");
     }// read line 2
-    
+        
     for(i = 0; i < N_OUTPUT_BLOCKS; i++) {
          read_hex_line(outputs[i], BLOCKSIZE, NULL); 
          scanf("\n");
@@ -183,26 +178,34 @@ void stage0(msg_t ciphertext, int *ciphertext_length, block_t outputs[N_OUTPUT_B
     for(i = 0; i < BOOK_LENGTH; i++) {
         cipherbook[i] = getchar();
     }// read line 5
-    // TODO: MAKE THIS A FUNCTION 
-} 
+
+}     
 
 
-// TODO: Add functions here, if needed.
-
-/********* Stage 1 Functions *********/
-// Reminder: you *cannot* use string.h or ctype.h for this stage!
-
+int isalphanumeric(char c);
 void stage1(book_t cipherbook, int *book_len) 
-{
-    // TODO: Implement stage 1!
+{    
+    book_t cipherbook_dummy;
+    int book_length = 0; 
+    int i;
+    for(i = 0; i < BOOK_LENGTH; i++) {
+        if(isalphanumeric(cipherbook[i])){
+            cipherbook_dummy[book_length] = cipherbook[i];
+            book_length++;
+        }
+    }
 
-    /* !! Submission Instructions !! Store your results in the variables:
-     *      cipherbook, book_len
-     * These are passed to submit_stage1 for some useful output and submission. */
-    
+    for(i = 0; i < book_length;i++) {
+        cipherbook[i] = cipherbook_dummy[i];
+    }
+    *book_len = book_length;
 }
 
-// TODO: Add functions here, if needed.
+int isalphanumeric(char c) { 
+    if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+        return 1; 
+    return 0;
+}
 
 /********* Stage 2 Functions *********/
 
