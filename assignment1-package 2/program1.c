@@ -67,9 +67,11 @@ void stage3(block_t key2, block_t outputs[N_OUTPUT_BLOCKS],
 void stage4(byte_t key1[], byte_t ciphertext[], int cipher_length, 
             byte_t plaintext[]);
 
-// TODO: Put your own function prototypes here! Recommended: separate into stages.
+// stage 1
+int isalphanumeric(char c); // function to check if a character is alphanumeric
 
-
+// stage 2
+void xor_blocks(block_t input1, block_t input2, block_t output);
 
 /* The main function of the program */
 // It is strongly suggested you do NOT modify this function.
@@ -158,6 +160,11 @@ int read_hex_line(byte_t output[], int max_count, char *last_char)
 void stage0(msg_t ciphertext, int *ciphertext_length, block_t outputs[N_OUTPUT_BLOCKS], 
             block_t timesteps[N_TIMESTEPS], book_t cipherbook) 
 {
+    /*
+    stage0 reads in all the lines of input, using scanf(), getchar() and the 
+    read_hex_line() function. Depending on the type of input, each type of 
+    function is used. 
+    */
     scanf("%d\n", ciphertext_length);  // reads line 1
     int i = 0; 
     for(i = 0; i < *ciphertext_length; i += BLOCKSIZE) {
@@ -178,23 +185,29 @@ void stage0(msg_t ciphertext, int *ciphertext_length, block_t outputs[N_OUTPUT_B
     for(i = 0; i < BOOK_LENGTH; i++) {
         cipherbook[i] = getchar();
     }// read line 5
-
+    
 }     
 
 
-int isalphanumeric(char c);
 void stage1(book_t cipherbook, int *book_len) 
 {    
+    /*
+    Retains only the alphanumeric contents of cipherbook
+    */
+    //variable declarations
     book_t cipherbook_dummy;
     int book_length = 0; 
     int i;
+    
+    // alphanumeric characters stored in a dummy array
     for(i = 0; i < BOOK_LENGTH; i++) {
         if(isalphanumeric(cipherbook[i])){
             cipherbook_dummy[book_length] = cipherbook[i];
             book_length++;
         }
     }
-
+    
+    // original array is overwritten with the dummy array, with a new book_length
     for(i = 0; i < book_length;i++) {
         cipherbook[i] = cipherbook_dummy[i];
     }
@@ -202,6 +215,7 @@ void stage1(book_t cipherbook, int *book_len)
 }
 
 int isalphanumeric(char c) { 
+    // function checks if a given character is an alphabet/number
     if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
         return 1; 
     return 0;
@@ -212,44 +226,163 @@ int isalphanumeric(char c) {
 void stage2(byte_t codebook[], int book_len, block_t outputs[N_OUTPUT_BLOCKS], 
             block_t timesteps[N_TIMESTEPS], block_t key2) 
 {
-    // TODO: Implement stage 2!
-
-
-    /* !! Submission Instructions !! Store your results in the variable:
-     *      key2
-     * These will be passed 
-     * to submit_stage2 to let you see some useful output! */
+    /* 
+    stage2 calculates the various possible combinations of key2 and finds the 
+    one using the provided equation. In order to calculate the left hand side 
+    and right hand side, provided functions AES_encrypt and AES_decrypt along 
+    with a new function xor_blocks is used
+    */
+    
+    //variable declarations
+    int i, j;
+    int flag = 0;
+    block_t key1; 
+    block_t lhs_output;
+    block_t rhs_output;
+    block_t xor_output;
+    block_t encrypt_output ;
+    block_t decrypt_output;
+    int counter = 0;
+    
+    for(i = 0; i < book_len; i++) {
+        key1[counter++] = codebook[i]; // creates 16 byte blocks of the codebook
+        if(counter == 16) {
+            AES_encrypt(timesteps[10], key1, encrypt_output); 
+            // encrypts T[i+1] with the possible key key1
+            
+            AES_decrypt(outputs[1], key1, decrypt_output); 
+            // decrypts O[i+1] with the possible key key1
+            
+            xor_blocks(encrypt_output, decrypt_output, xor_output); 
+            // XORs the output of the above statements
+            
+            AES_decrypt(xor_output, key1, lhs_output);
+            //decrypts the xor_output with the possible key key1, giving the 
+            // lhs output
+            
+            AES_encrypt(timesteps[9], key1, encrypt_output);
+            // encrypts T[i] using the possible key key1
+            
+            xor_blocks(outputs[0], encrypt_output, rhs_output);
+            // XORs the output of the encryption and O[i] = O[9]
+            
+            // loops returns flag's value as 1 if lhs = rhs, else 0
+            for(j = 0; j < BLOCKSIZE; j++){
+                if(lhs_output[j] == rhs_output[j])
+                    flag = 1;
+                else {
+                    flag = 0;
+                    break;
+                }
+            }
+            //if flag = 1, key is found, which is stored in key2
+            if(flag) {
+                for(int k = 0; k < BLOCKSIZE; k++)
+                    key2[k] = key1[k];
+                break;
+            }
+            counter = 0;
+        }
+    }
 }
 
-// TODO: Add functions here, if needed.
+
+void xor_blocks(block_t input1, block_t input2, block_t output) {
+    /*
+    function XORs two block_t variables and 
+    stores the result in the output block 
+    */ 
+    
+    for(int i = 0; i < BLOCKSIZE; i++) {
+        output[i] = (input1[i] ^ input2[i]);
+    }
+}
+
 
 /********* Stage 3 Functions *********/
-
 void stage3(block_t key2, block_t outputs[N_OUTPUT_BLOCKS], 
             block_t timesteps[N_TIMESTEPS], byte_t key1[], int ciphertext_length) 
 {
-    // TODO: Implement stage 3!
-
-    /* !! Submission Instructions !! Store your results in the variable:
-     *      key1
-     * These will be passed to submit_stage3 to let you see some useful output! */
+    /*
+    function generates key1 using the X9.31 psuedorandom number generator
+    */
+    
+    //variable declarations
+    int i; 
+    int j;
+    block_t vi; 
+    block_t encrypt_output;
+    block_t xor_output; 
+    block_t intermediate_value;
+    block_t Oi;
+    int counter_key1 = 0;
+    
+    // calculating the initial state of the generator V10
+    AES_encrypt(timesteps[10], key2, encrypt_output);
+    xor_blocks(encrypt_output, outputs[1], xor_output);
+    AES_encrypt(xor_output, key2, vi);
+    
+    //X9.31 pseudorandom number generator
+    for(i = 11; i <= (11 + (ciphertext_length/BLOCKSIZE)); i++){
+        
+        //stage 2
+        AES_encrypt(timesteps[i], key2, intermediate_value);
+        
+        //stage 3
+        xor_blocks(intermediate_value, vi, xor_output);
+        AES_encrypt(xor_output, key2, Oi);
+        
+        //stage 4
+        xor_blocks(Oi, intermediate_value, xor_output);
+        AES_encrypt(xor_output, key2, vi);
+        
+        // storing the result of X9.31 in the key1
+        for(j = 0; j < BLOCKSIZE; j++) {
+        key1[counter_key1++] = Oi[j];
+        }
+    } 
 }
-
-// TODO: Add functions here, if needed.
 
 /********* Stage 4 Functions *********/
 void stage4(byte_t key1[], byte_t ciphertext[], int cipher_length, byte_t plaintext[])
 {
-    // TODO: Implement stage 4!
-
-    /* !! Submission Instructions !! Store your results in the variable:
-     *      plaintext
-     * These will be passed to submit_stage4 to let you see some useful output! */
+    /*
+    XORing key1 along with the ciphertext results in the original message!
+    */
+    //variable declarations
+    block_t block_key1;
+    block_t block_ciphertext;
+    block_t block_plaintext; 
+    int counter_plaintext = 0;
+    int i, j;
+    int counter_key1 = 0; 
+    int counter_ciphertext = 0;
+    
+    /* 
+    block_t's of key1 and ciphertext are made due to the xor_blocks function's 
+    limitation of only being able to handle a maximum of byte_t[16] i.e. block_t
+    , after which the blocks are XORed and stored in the plaintext array, which
+    is then outputted. 
+    */
+    for(i = 0; i < cipher_length; i++) {
+        block_key1[counter_key1++] = key1[i]; 
+        block_ciphertext[counter_ciphertext++] = ciphertext[i];
+        if(counter_key1 == 16) {
+            xor_blocks(block_key1, block_ciphertext, block_plaintext);  
+            
+            for(j = 0; j < BLOCKSIZE; j++) {
+                plaintext[counter_plaintext++] = block_plaintext[j];
+            }
+            counter_key1 = 0; 
+            counter_ciphertext = 0;
+        }
+    }
 }
 
-// TODO: Add functions here, if needed.
+
 
 /********* END OF ASSIGNMENT! *********/
 /* If you would like to try the bonus stage, attempt it in a new file, bonus.c */
 // Feel free to write a comment to the marker or the lecturer below...
 
+//algorithms are fun!
