@@ -1,5 +1,5 @@
 # FoA-project-1
 
-Taken in Semester 1, 2021  
+Semester 1, 2021  
 
-Score received: 14.5/15
+Score: 14.5/15
